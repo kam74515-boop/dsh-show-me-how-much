@@ -2,18 +2,18 @@
 
 DeepSeek Harness Web 费用与 Token 统计插件。
 
-- 会话底栏最右侧实时显示估算费用和总 Token。
+- 会话底栏最右侧在模型调用结算后显示估算费用和总 Token。
 - 「设置 → 费用统计」提供日期、时间、缓存命中率、按日趋势和模型明细。
 - 自动区分 DeepSeek Flash（含 V4.1 和旧 V4 Flash 别名）、V4 Pro，并支持自定义回退价格。
 - 使用 Harness 持久化 Projection；重新打开历史会话仍可重放统计。
-- 流式 usage 与最终 message 采用替换语义，不会重复累计。
+- 读取新版 Harness 的已结算 message / attempt；单条记录优先采用最终 usage，流内 usage 不会重复累计。
 
 ## 安装
 
 直接从 GitHub 安装：
 
 ```sh
-dsh plugin --profile web add github:kam74515-boop/dsh-show-me-how-much#v0.1.1
+dsh plugin --profile web add github:kam74515-boop/dsh-show-me-how-much#v0.2.0
 ```
 
 然后重启 Harness Web：
@@ -64,7 +64,7 @@ Harness 的 `uncachedInputTokens`、`cacheReadTokens`、`cacheWriteTokens` 和 `
 
 金额是基于 provider 返回用量与当前价格表的估算值，不等同于 DeepSeek 开放平台账单。赠送余额、折扣、价格调整和第三方 provider 可能造成差异。
 
-项目针对 DeepSeek Harness `0.1.0-rc.6` 开发，Harness 仍处于 Developer Preview，后续版本可能需要同步插件 API。
+项目针对 DeepSeek Harness `0.2.0-rc.2` 开发，Harness 仍处于 Developer Preview，后续版本可能需要同步插件 API。
 
 ## 许可证
 

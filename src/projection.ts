@@ -19,14 +19,20 @@ interface UsageSample extends Route {
   buckets: CostTokenBuckets
 }
 
-interface CostUsageState {
+export interface CostUsageState {
   totals: CostTokenBuckets
   models: CostModelUsage[]
   days: CostDayUsage[]
   route: Route
-  last: UsageSample | null
-  firstAt?: number
-  lastAt?: number
+  last: null
+  firstAt?: number | undefined
+  lastAt?: number | undefined
+}
+
+declare module '@deepseek-ai/dsh-session-projection/types' {
+  interface SessionProjectionStateMap {
+    costUsage: CostUsageState
+  }
 }
 
 const zeroBuckets = (): CostTokenBuckets => ({
@@ -72,12 +78,6 @@ const bucketsFrom = (usage: TokenUsage): CostTokenBuckets => ({
   cacheWriteTokens: usage.cacheWriteTokens ?? 0,
 })
 
-const equalBuckets = (a: CostTokenBuckets, b: CostTokenBuckets): boolean =>
-  a.uncachedInputTokens === b.uncachedInputTokens
-  && a.outputTokens === b.outputTokens
-  && a.cacheReadTokens === b.cacheReadTokens
-  && a.cacheWriteTokens === b.cacheWriteTokens
-
 const addBuckets = (a: CostTokenBuckets, b: CostTokenBuckets, sign = 1): CostTokenBuckets => ({
   uncachedInputTokens: a.uncachedInputTokens + sign * b.uncachedInputTokens,
   outputTokens: a.outputTokens + sign * b.outputTokens,
@@ -93,7 +93,7 @@ function updateModels(
   const index = rows.findIndex(row => row.provider === sample.provider && row.model === sample.model)
   if (index < 0) {
     if (sign < 0) return [...rows]
-    return [...rows, { ...sample, ...sample.buckets }]
+    return [...rows, { provider: sample.provider, model: sample.model, ...sample.buckets }]
   }
   const current = rows[index]
   if (current === undefined) return [...rows]
@@ -129,29 +129,39 @@ function updateDays(rows: readonly CostDayUsage[], sample: UsageSample, sign: 1 
 }
 
 function usageOf(event: SessionEvent): { turn: number; step: number; usage: TokenUsage } | undefined {
-  if (event.type === 'assistant/chunk' && event.data.chunk.type === 'usage') {
-    return { turn: event.data.turn, step: event.data.step, usage: event.data.chunk.usage }
+  if (event.type !== 'assistant/message' && event.type !== 'assistant/attempt') return undefined
+  let usage = event.type === 'assistant/message' ? event.data.usage : undefined
+  if (usage === undefined) {
+    for (const record of event.data.stream) {
+      if (record.type === 'chunk' && record.chunk.type === 'usage') usage = record.chunk.usage
+    }
   }
-  if (event.type === 'assistant/message' && event.data.usage !== undefined) {
-    return { turn: event.data.turn, step: event.data.step, usage: event.data.usage }
-  }
+  if (usage !== undefined) return { turn: event.data.turn, step: event.data.step, usage }
   return undefined
 }
 
 const isoDate = (time: number): string => new Date(time).toISOString().slice(0, 10)
 
 /** Replay-aware, model-aware token projection used by both plugin surfaces. */
-export const costUsageProjectionDefinition: ProjectionDefinition<'costUsage', CostUsageState> = {
+export const costUsageProjectionDefinition = {
   key: 'costUsage',
-  schema: projectionSchema,
-  init: () => ({
+  stateSchema: z.object({
+    totals: z.object(bucketSchema),
+    models: z.array(modelSchema),
+    days: z.array(daySchema),
+    route: z.object({ provider: z.string(), model: z.string() }),
+    last: z.null(),
+    firstAt: z.number().optional(),
+    lastAt: z.number().optional(),
+  }),
+  init: (): CostUsageState => ({
     totals: zeroBuckets(),
     models: [],
     days: [],
     route: { provider: 'unknown', model: 'unknown' },
     last: null,
   }),
-  apply: (state, event) => {
+  apply: (state: CostUsageState, event: SessionEvent): CostUsageState => {
     if (event.type === 'request/context') {
       const route = { provider: event.data.provider, model: event.data.model }
       return route.provider === state.route.provider && route.model === state.route.model
@@ -162,13 +172,6 @@ export const costUsageProjectionDefinition: ProjectionDefinition<'costUsage', Co
     const report = usageOf(event)
     if (report === undefined) return state
     const buckets = bucketsFrom(report.usage)
-    const previous = state.last !== null
-      && state.last.turn === report.turn
-      && state.last.step === report.step
-      ? state.last
-      : undefined
-    if (previous !== undefined && equalBuckets(previous.buckets, buckets)) return state
-
     const sample: UsageSample = {
       turn: report.turn,
       step: report.step,
@@ -181,11 +184,6 @@ export const costUsageProjectionDefinition: ProjectionDefinition<'costUsage', Co
     let totals = state.totals
     let models = state.models
     let days = state.days
-    if (previous !== undefined) {
-      totals = addBuckets(totals, previous.buckets, -1)
-      models = updateModels(models, previous, -1)
-      days = updateDays(days, previous, -1)
-    }
     totals = addBuckets(totals, sample.buckets)
     models = updateModels(models, sample, 1)
     days = updateDays(days, sample, 1)
@@ -194,17 +192,20 @@ export const costUsageProjectionDefinition: ProjectionDefinition<'costUsage', Co
       totals,
       models,
       days,
-      last: sample,
+      last: null,
       firstAt: state.firstAt === undefined ? event.time : Math.min(state.firstAt, event.time),
       lastAt: Math.max(state.lastAt ?? event.time, event.time),
     }
   },
-  view: state => ({
-    ...state.totals,
-    ...state.firstAt === undefined ? {} : { firstAt: state.firstAt },
-    ...state.lastAt === undefined ? {} : { lastAt: state.lastAt },
-    models: state.models,
-    days: state.days,
-  }),
-  stateVersion: 1,
-}
+  wire: {
+    viewSchema: projectionSchema,
+    view: (state: CostUsageState): CostUsageProjection => ({
+      ...state.totals,
+      ...state.firstAt === undefined ? {} : { firstAt: state.firstAt },
+      ...state.lastAt === undefined ? {} : { lastAt: state.lastAt },
+      models: state.models,
+      days: state.days,
+    }),
+  },
+  stateVersion: 2,
+} satisfies ProjectionDefinition<'costUsage', CostUsageState>

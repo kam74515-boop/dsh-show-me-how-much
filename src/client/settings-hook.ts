@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConfigForm as SettingsScope, ConfigFormSnapshot as SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { DEFAULT_COST_SETTINGS } from '../pricing.js'
 import type { CostSettings } from '../types.js'
 

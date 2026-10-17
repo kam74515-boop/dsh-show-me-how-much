@@ -1,5 +1,6 @@
+import type { ConfigForm as SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { memo } from 'react'
-import type { SettingsScope, UseProjection } from '@deepseek-ai/dsh-client-runtime/client'
+import type { UseProjection } from '@deepseek-ai/dsh-api-session-controller/client'
 import { costForModels } from '../pricing.js'
 import type { CostSettings } from '../types.js'
 import { formatMoney, formatTokens, totalTokens } from './format.js'

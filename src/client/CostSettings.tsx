@@ -1,7 +1,8 @@
+import type { ConfigForm as SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { useMemo, useState } from 'react'
 import type {
-  SessionListState, SettingsScope,
-} from '@deepseek-ai/dsh-client-runtime/client'
+  SessionListState,
+} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import { costForModels, DEFAULT_COST_SETTINGS, OFF_PEAK_COST_SETTINGS } from '../pricing.js'
 import type {
