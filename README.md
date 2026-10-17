@@ -13,7 +13,7 @@ DeepSeek Harness Web 费用与 Token 统计插件。
 直接从 GitHub 安装：
 
 ```sh
-dsh plugin --profile web add github:kam74515-boop/dsh-show-me-how-much#v0.2.0
+dsh plugin --profile web add github:kam74515-boop/dsh-show-me-how-much#v0.2.1
 ```
 
 然后重启 Harness Web：

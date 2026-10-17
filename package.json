@@ -1,6 +1,6 @@
 {
   "name": "dsh-show-me-how-much",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DeepSeek Harness token usage and estimated cost dashboard",
   "license": "MIT",
   "homepage": "https://github.com/kam74515-boop/dsh-show-me-how-much#readme",

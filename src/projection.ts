@@ -207,5 +207,5 @@ export const costUsageProjectionDefinition = {
       days: state.days,
     }),
   },
-  stateVersion: 2,
+  stateVersion: 3,
 } satisfies ProjectionDefinition<'costUsage', CostUsageState>
