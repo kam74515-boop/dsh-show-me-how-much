@@ -36,5 +36,5 @@ export function apply(ctx: Context): void {
 }
 
 export { costUsageProjectionDefinition } from './projection.js'
-export { costForBuckets, costForModels, ratesForModel, DEFAULT_COST_SETTINGS } from './pricing.js'
+export { costForBuckets, costForModels, ratesForModel, DEFAULT_COST_SETTINGS, OFF_PEAK_COST_SETTINGS } from './pricing.js'
 export type * from './types.js'

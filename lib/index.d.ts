@@ -70,8 +70,10 @@ interface CostUsageState {
 declare const costUsageProjectionDefinition: ProjectionDefinition<'costUsage', CostUsageState>;
 //#endregion
 //#region src/pricing.d.ts
-/** Official DeepSeek CNY prices published for V4 on 2026-08-15. */
+/** Official CNY peak prices verified on 2026-10-17; applied to all selected usage. */
 declare const DEFAULT_COST_SETTINGS: Readonly<CostSettings>;
+/** Off-peak preset. Fallback rates remain user-controlled, not official model prices. */
+declare const OFF_PEAK_COST_SETTINGS: Readonly<CostSettings>;
 interface CostRates {
   cacheHit: number;
   cacheMiss: number;
@@ -91,5 +93,5 @@ declare const COST_SETTINGS_NAMESPACE = "show-me-how-much";
 /** Register the host-backed price table and replayable token projection. */
 declare function apply(ctx: Context): void;
 //#endregion
-export { COST_SETTINGS_NAMESPACE, type CostDayUsage, type CostModelUsage, type CostSettings, type CostTokenBuckets, type CostUsageProjection, DEFAULT_COST_SETTINGS, apply, costForBuckets, costForModels, costUsageProjectionDefinition, name, ratesForModel };
+export { COST_SETTINGS_NAMESPACE, type CostDayUsage, type CostModelUsage, type CostSettings, type CostTokenBuckets, type CostUsageProjection, DEFAULT_COST_SETTINGS, OFF_PEAK_COST_SETTINGS, apply, costForBuckets, costForModels, costUsageProjectionDefinition, name, ratesForModel };
 //# sourceMappingURL=index.d.ts.map

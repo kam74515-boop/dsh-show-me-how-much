@@ -3,7 +3,7 @@ import type {
   SessionListState, SettingsScope,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import { costForModels } from '../pricing.js'
+import { costForModels, DEFAULT_COST_SETTINGS, OFF_PEAK_COST_SETTINGS } from '../pricing.js'
 import type {
   CostDayUsage, CostModelUsage, CostSettings, CostTokenBuckets, CostUsageProjection,
 } from '../types.js'
@@ -141,6 +141,11 @@ export function CostSettingsSection({ scope, useSessions }: CostSettingsProps) {
   const hitPercent = input === 0 ? 0 : totals.cacheReadTokens / input * 100
   const visibleDays = totals.days.slice(-14)
   const maxCost = Math.max(...visibleDays.map(day => day.cost), 0)
+  const applyPreset = (preset: Readonly<CostSettings>): void => {
+    for (const field of ['flashCacheHit', 'flashCacheMiss', 'flashOutput', 'proCacheHit', 'proCacheMiss', 'proOutput'] as const) {
+      void scope.set(field, preset[field])
+    }
+  }
   const reset = (): void => {
     for (const field of Object.keys(settings) as Array<keyof CostSettings>) void scope.unset(field)
   }
@@ -157,7 +162,7 @@ export function CostSettingsSection({ scope, useSessions }: CostSettingsProps) {
     <div className="smhm_module"><div className="smhm_moduleHead"><h3 className="smhm_moduleTitle"><ChartIcon/>按日费用</h3><span className="smhm_moduleMeta">最近 {visibleDays.length} 个有用量日期 · UTC</span></div>{visibleDays.length === 0 ? <div className="smhm_empty">发送消息后，这里会出现费用趋势。</div> : <div className="smhm_chart">{visibleDays.map(day => <div className="smhm_barCol" key={day.date} title={`${day.date}\n${formatMoney(day.cost)}\n${formatTokens(totalTokens(day))} tok`}><div className="smhm_barTrack"><div className="smhm_bar" style={{ height: `${maxCost === 0 ? 2 : Math.max(3, day.cost / maxCost * 100)}%` }}/></div><span className="smhm_barLabel">{formatDate(day.date)}</span></div>)}</div>}</div>
     <div className="smhm_module"><div className="smhm_moduleHead"><h3 className="smhm_moduleTitle"><TokenIcon/>模型明细</h3><span className="smhm_moduleMeta">{totals.models.length} 条路由</span></div>{totals.models.length === 0 ? <div className="smhm_empty">暂无模型用量。</div> : <table className="smhm_table"><thead><tr><th>模型</th><th>缓存命中</th><th>未命中</th><th>输出</th><th>费用</th></tr></thead><tbody>{totals.models.map(row => <tr key={`${row.provider}/${row.model}`}><td><span className="smhm_model">{row.model}</span><span className="smhm_provider">{row.provider}</span></td><td>{formatTokens(row.cacheReadTokens)}</td><td>{formatTokens(row.uncachedInputTokens + row.cacheWriteTokens)}</td><td>{formatTokens(row.outputTokens)}</td><td className="smhm_price">{formatMoney(costForModels([row], settings), true)}</td></tr>)}</tbody></table>}</div>
     <div className="smhm_module"><div className="smhm_moduleHead"><h3 className="smhm_moduleTitle"><CoinIcon/>计算拆分</h3><span className="smhm_moduleMeta">Token × 单价 / 1,000,000</span></div><div className="smhm_formula"><div className="smhm_formulaItem"><span className="smhm_formulaName">缓存命中输入</span><strong className="smhm_formulaValue">{formatTokens(totals.cacheReadTokens)} tok</strong></div><div className="smhm_formulaItem"><span className="smhm_formulaName">缓存未命中输入</span><strong className="smhm_formulaValue">{formatTokens(totals.uncachedInputTokens + totals.cacheWriteTokens)} tok</strong></div><div className="smhm_formulaItem"><span className="smhm_formulaName">模型输出</span><strong className="smhm_formulaValue">{formatTokens(totals.outputTokens)} tok</strong></div></div></div>
-    <div className="smhm_module"><div className="smhm_moduleHead"><h3 className="smhm_moduleTitle">价格表</h3><span className="smhm_moduleMeta">每百万 Token · 人民币</span></div><div className="smhm_settingsGrid"><PriceGroup title="DeepSeek V4 Flash" prefix="flash" settings={settings} scope={scope}/><PriceGroup title="DeepSeek V4 Pro" prefix="pro" settings={settings} scope={scope}/><PriceGroup title="其他模型（回退）" prefix="fallback" settings={settings} scope={scope}/></div><div className="smhm_settingsFoot"><span>{snapshot.writable ? '离开输入框后自动保存到 Harness 设置。' : '当前连接只读，价格设置不会持久化。'}</span><button type="button" className="smhm_reset" disabled={!snapshot.writable} onClick={reset}>恢复官方默认价</button></div></div>
-    <p className="smhm_warning">这是根据 provider 返回 Token 与当前价格表计算的估算值，不等同于 DeepSeek 开放平台账单；价格调整、赠送余额、折扣和非 DeepSeek 路由可能造成差异。缓存写入 Token（若 provider 报告）按未命中输入计价。</p>
+    <div className="smhm_module"><div className="smhm_moduleHead"><h3 className="smhm_moduleTitle">价格表</h3><span className="smhm_moduleMeta">每百万 Token · 人民币 · 2026-10-17 核验</span></div><div className="smhm_settingsGrid"><PriceGroup title="DeepSeek Flash（含 V4.1）" prefix="flash" settings={settings} scope={scope}/><PriceGroup title="DeepSeek V4 Pro" prefix="pro" settings={settings} scope={scope}/><PriceGroup title="其他模型（回退）" prefix="fallback" settings={settings} scope={scope}/></div><div className="smhm_settingsFoot"><span>{snapshot.writable ? '离开输入框后自动保存到 Harness 设置。' : '当前连接只读，价格设置不会持久化。'}</span><button type="button" className="smhm_reset" disabled={!snapshot.writable} onClick={() => { applyPreset(OFF_PEAK_COST_SETTINGS) }}>使用闲时价</button><button type="button" className="smhm_reset" disabled={!snapshot.writable} onClick={() => { applyPreset(DEFAULT_COST_SETTINGS) }}>使用高峰价</button><button type="button" className="smhm_reset" disabled={!snapshot.writable} onClick={reset}>恢复默认高峰价（含回退）</button></div></div>
+    <p className="smhm_warning">北京时间周一至周五（中国法定节假日除外）09:00–12:00、14:00–18:00 为高峰，其余为闲时。插件不自动分时计费：所选价格会重算全部历史用量，混合时段请以平台账单为准。已有自定义价格会保留，请按需选择预设。Search/Fetch 按次费用未计入（官方将于北京时间 2026-11-01 起对 Harness 等服务端调用收费）。这是根据 provider 返回 Token 与当前价格表计算的估算值，不等同于 DeepSeek 开放平台账单；价格调整、赠送余额、折扣和非 DeepSeek 路由可能造成差异。缓存写入 Token（若 provider 报告）按未命中输入计价。</p>
   </section>
 }

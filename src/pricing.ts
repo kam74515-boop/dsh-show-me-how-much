@@ -1,16 +1,27 @@
 import type { CostModelUsage, CostSettings, CostTokenBuckets } from './types.js'
 
-/** Official DeepSeek CNY prices published for V4 on 2026-08-15. */
+/** Official CNY peak prices verified on 2026-10-17; applied to all selected usage. */
 export const DEFAULT_COST_SETTINGS: Readonly<CostSettings> = Object.freeze({
+  flashCacheHit: 0.04,
+  flashCacheMiss: 2,
+  flashOutput: 8,
+  proCacheHit: 0.30,
+  proCacheMiss: 9,
+  proOutput: 27,
+  fallbackCacheHit: 0.04,
+  fallbackCacheMiss: 2,
+  fallbackOutput: 8,
+})
+
+/** Off-peak preset. Fallback rates remain user-controlled, not official model prices. */
+export const OFF_PEAK_COST_SETTINGS: Readonly<CostSettings> = Object.freeze({
+  ...DEFAULT_COST_SETTINGS,
   flashCacheHit: 0.02,
   flashCacheMiss: 1,
-  flashOutput: 2,
-  proCacheHit: 0.025,
-  proCacheMiss: 3,
-  proOutput: 6,
-  fallbackCacheHit: 0.02,
-  fallbackCacheMiss: 1,
-  fallbackOutput: 2,
+  flashOutput: 4,
+  proCacheHit: 0.15,
+  proCacheMiss: 4.5,
+  proOutput: 13.5,
 })
 
 export interface CostRates {
@@ -32,7 +43,9 @@ export function ratesForModel(model: string, settings: CostSettings): CostRates 
     }
   }
   if (
-    normalized.includes('v4-flash')
+    normalized === 'deepseek-flash'
+    || normalized.includes('v4.1-flash')
+    || normalized.includes('v4-flash')
     || normalized === 'deepseek-chat'
     || normalized === 'deepseek-reasoner'
   ) {
